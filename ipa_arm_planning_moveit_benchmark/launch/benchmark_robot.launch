@@ -1,0 +1,33 @@
+<launch>
+	
+	<arg name="robot" default="$(optenv ROBOT !!NO_ROBOT_SET!!)"/>
+	<arg name="pipeline" default="ompl" />
+	<arg name="load_robot_description" default="true"/>
+	<arg name="file_name" default="$(optenv FILE_NAME !!NO_FILE_NAME_SET!!)"/>
+	
+	<!-- benchmark options file -->
+	<arg name="bench_opts" default="$(find ipa_arm_planning_moveit_benchmark)/benchmark_config/$(arg file_name).yaml"/>
+
+	<!-- Load robot settings -->
+	<!-- Planning Functionality -->
+	<include file="$(find cob_moveit_bringup)/launch/planning_context.xml">
+		<arg name="robot" value="$(arg robot)"/> 
+		<arg name="load_robot_description" value="$(arg load_robot_description)"/>
+	</include>
+
+	<include ns="move_group" file="$(find cob_moveit_bringup)/launch/planning_pipeline.xml">
+		<arg name="robot" value="$(arg robot)"/>
+		<arg name="pipeline" value="$(arg pipeline)"/>
+	</include>
+	
+
+	<!-- Load warehouse containing scenes and queries to benchmark -->
+	<include file="$(find cob_moveit_bringup)/launch/default_warehouse_db.launch"/>
+
+	<!-- Launch benchmark node -->
+	<node name="move_group" pkg="moveit_ros_benchmarks" type="moveit_run_benchmark" output="screen" required="true">
+		<rosparam command="load" file="$(arg bench_opts)"/>
+	</node>
+</launch>
+
+
