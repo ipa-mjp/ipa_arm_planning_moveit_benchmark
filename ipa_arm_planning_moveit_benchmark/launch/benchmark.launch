@@ -21,17 +21,6 @@
     	<arg name="debug" value="$(arg debug)"/>
   	</include>
 
-  <!-- Planning Functionality -->
-  <!--include file="$(find cob_moveit_bringup)/launch/planning_context.xml">
-    <arg name="robot" value="$(arg robot)"/>
-    <arg name="load_robot_description" value="$(arg load_robot_description)"/>
-  </include>
-
-  <include ns="move_group" file="$(find cob_moveit_bringup)/launch/planning_pipeline.xml">
-    <arg name="robot" value="$(arg robot)"/>
-    <arg name="pipeline" value="$(arg pipeline)"/>
-  </include-->
-
   <!-- Load warehouse containing scenes and queries to benchmark -->
   <include file="$(find cob_moveit_bringup)/launch/default_warehouse_db.launch">
   	 <arg name="moveit_warehouse_database_path" value="$(arg moveit_warehouse_database_path)"/>
