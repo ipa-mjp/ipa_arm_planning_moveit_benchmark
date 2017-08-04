@@ -2,7 +2,7 @@
 <package>
   <name>ipa_arm_planning_moveit_benchmark</name>
   <version>0.0.0</version>
-  <description>The ipa_arm_planning_moveit_benchmark package</description>
+  <description> tool for benchmark </description>
 
   <maintainer email="bfb-ws@todo.todo">bfb-ws</maintainer>
 
