@@ -10,21 +10,20 @@
 
 	<!-- Load robot settings -->
 	<!-- Planning Functionality -->
-	<include file="$(find cob_moveit_bringup)/launch/planning_context.xml">
+	<include file="$(find ipa_moveit_bringup)/launch/planning_context.xml">
 		<arg name="robot" value="$(arg robot)"/> 
 		<arg name="load_robot_description" value="$(arg load_robot_description)"/>
 	</include>
 
-	<include ns="move_group" file="$(find cob_moveit_bringup)/launch/planning_pipeline.xml">
+	<include ns="move_group" file="$(find ipa_moveit_bringup)/launch/planning_pipeline.xml">
 		<arg name="robot" value="$(arg robot)"/>
 		<arg name="pipeline" value="$(arg pipeline)"/>
 	</include>
 	
 
 	<!-- Load warehouse containing scenes and queries to benchmark -->
-	<include file="$(find cob_moveit_bringup)/launch/default_warehouse_db.launch"/>
+	<include file="$(find ipa_moveit_bringup)/launch/default_warehouse_db.launch"/>
 	
-	#todo: read data from node_name/... -- make it generic for all node name (ros::this_node::getName())
 	<!-- Launch benchmark node -->
 	<node name="move_group" pkg="ipa_arm_planning_moveit_benchmark" type="ipa_run_benchmark" output="screen" required="true">
 		<rosparam command="load" file="$(arg bench_opts)"/>
