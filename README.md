@@ -1,5 +1,7 @@
 # ipa_arm_planning_moveit_benchmark
 
+Note: Branch: cob_manipulation -- mjp-origin/moveit_benchmark, ipa_arm_planning_moveit_benchmark -- kinetic_dev
+
 1. Startup simulation: roslaunch cob_bringup_sim robot.launch robot:=raw3-1 robot_env:=empty
 2. Startup benchmark : roslaunch ipa_arm_planning_moveit_benchmark benchmark.launch robot:=raw3-1 
 
