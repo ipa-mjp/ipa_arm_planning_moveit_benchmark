@@ -1,6 +1,6 @@
 # ipa_arm_planning_moveit_benchmark
 
-Note: Branch: ipa_moveit_config -- origin/indigo_dev, ipa_arm_planning_moveit_benchmark -- benchmark
+Note: Branch: ipa_moveit_config -- origin/indigo_dev, ipa_arm_planning_moveit_benchmark -- mjp-origin/benchmark
 
 1. Startup simulation: roslaunch cob_bringup_sim robot.launch robot:=raw3-1 robot_env:=empty
 2. Startup benchmark : roslaunch ipa_arm_planning_moveit_benchmark benchmark.launch robot:=raw3-1 
