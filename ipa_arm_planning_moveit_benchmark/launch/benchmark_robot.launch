@@ -23,9 +23,10 @@
 
 	<!-- Load warehouse containing scenes and queries to benchmark -->
 	<include file="$(find cob_moveit_bringup)/launch/default_warehouse_db.launch"/>
-
+	
+	#todo: read data from node_name/... -- make it generic for all node name (ros::this_node::getName())
 	<!-- Launch benchmark node -->
-	<node name="move_group" pkg="moveit_ros_benchmarks" type="moveit_run_benchmark" output="screen" required="true">
+	<node name="move_group" pkg="ipa_arm_planning_moveit_benchmark" type="ipa_run_benchmark" output="screen" required="true">
 		<rosparam command="load" file="$(arg bench_opts)"/>
 	</node>
 </launch>
