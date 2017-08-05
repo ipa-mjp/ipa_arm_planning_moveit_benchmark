@@ -17,10 +17,9 @@
 
 	<include ns="move_group" file="$(find ipa_moveit_bringup)/launch/planning_pipeline.xml">
 		<arg name="robot" value="$(arg robot)"/>
-		<arg name="pipeline" value="$(arg pipeline)"/>
+		<arg name="pipeline" value="stomp"/>
 	</include>
 	
-
 	<!-- Load warehouse containing scenes and queries to benchmark -->
 	<include file="$(find ipa_moveit_bringup)/launch/default_warehouse_db.launch"/>
 	
