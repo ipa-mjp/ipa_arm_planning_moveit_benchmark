@@ -37,8 +37,8 @@
 #include <ros/ros.h>
 #include <string>
 
-#include <moveit/benchmarks/BenchmarkOptions.h>
-#include <moveit/benchmarks/BenchmarkExecutor.h>
+#include <ipa_arm_planning_moveit_benchmark/BenchmarkOptions.h>
+#include <ipa_arm_planning_moveit_benchmark/BenchmarkExecutor.h>
 
 int main(int argc, char** argv)
 {
@@ -53,7 +53,7 @@ int main(int argc, char** argv)
 
   std::vector<std::string> plugins;
   opts.getPlannerPluginList(plugins);
-  server.initialize(plugins);
+  server.initializeBenchmarkExecutor(plugins);
 
   // Running benchmarks
   if (!server.runBenchmarks(opts))
