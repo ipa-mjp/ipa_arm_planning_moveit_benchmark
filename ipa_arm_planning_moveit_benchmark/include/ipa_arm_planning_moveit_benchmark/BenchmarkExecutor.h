@@ -60,6 +60,8 @@ protected:
 
   virtual void collectMetrics(PlannerRunData& metrics, const planning_interface::MotionPlanDetailedResponse& mp_res, bool solved, double total_time);
 
+  virtual void writeOutput(const BenchmarkRequest& brequest, const std::string& start_time, double benchmark_duration);
+
   void executeBenchmark(moveit_msgs::MotionPlanRequest request, const std::map<std::string, std::vector<std::string>>& planners, int runs);
 
   /// Check that the given requests can be run on the set of planner plugins and algorithms

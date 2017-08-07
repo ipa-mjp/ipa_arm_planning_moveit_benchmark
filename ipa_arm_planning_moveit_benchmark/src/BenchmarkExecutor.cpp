@@ -120,7 +120,12 @@ void BenchmarkExecutor::initializeBenchmarkExecutor(const std::vector<std::strin
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
+/**
+ * Plan using planning scene context of every available plugins with one queries.
+ * @param request = motion plan request / set gola state
+ * @param planner = iterate over all plugins
+ * @param runs = no. of time want to run each plugins
+ */
 void BenchmarkExecutor::executeBenchmark(moveit_msgs::MotionPlanRequest request, const std::map<std::string, std::vector<std::string>>& planners, int runs)
 {
 //TODO: ompl consider by default planner not load define planner checkit out and correct it
@@ -137,16 +142,30 @@ void BenchmarkExecutor::executeBenchmark(moveit_msgs::MotionPlanRequest request,
 			for (int j = 0; j < runs; ++j)
 			{
 				planning_interface::MotionPlanDetailedResponse mp_res;
+				planning_interface::MotionPlanResponse res;
 				ros::WallTime start = ros::WallTime::now();
 				bool solved = contex->solve(mp_res);
+				bool solved1 = contex->solve(res);
 				double total_time = (ros::WallTime::now() - start).toSec();
+
+
+				moveit_msgs::DisplayTrajectory display_trajectory;
+
+				/* Visualize the trajectory */
+				ROS_INFO("Visualizing the trajectory");
+				moveit_msgs::MotionPlanResponse response;
+				res.getMessage(response);
+
+				display_trajectory.trajectory_start = response.trajectory_start;
+				display_trajectory.trajectory.push_back(response.trajectory);
+				options_.display_publisher_.publish(display_trajectory);
 
 				//collect data
 				start = ros::WallTime::now();
 
 				collectMetrics(planner_data[j], mp_res, solved, total_time);
-				double metrics_time = (ros::WallTime::now() - start).toSec();
-				ROS_DEBUG("Spent %lf seconds collecting metrics", metrics_time);
+				//double metrics_time = (ros::WallTime::now() - start).toSec();
+				//ROS_DEBUG("Spent %lf seconds collecting metrics", metrics_time);
 
 			}
 
@@ -190,10 +209,12 @@ bool BenchmarkExecutor::runBenchmarks(const BenchmarkOptions& opts)
 			ros::WallTime start_time = ros::WallTime::now();
 
 			executeBenchmark(queries[i].request, opts.getPlannerConfigurations(), opts.getNumRuns());
+			double duration = (ros::WallTime::now() - start_time).toSec();
+			//writeOutput(queries[i], boost::posix_time::to_iso_extended_string(start_time.toBoost()), duration);
 		}
-
-
+		return true;
 	}
+	return false;
 }
 
 /**
@@ -287,7 +308,7 @@ bool BenchmarkExecutor::initializeBenchmarks(const BenchmarkOptions& opts, movei
 		brequest.request.num_planning_attempts = 1;
 		requests.push_back(brequest);
 	}
-
+	options_ = opts;
 	return true;
 }
 
@@ -395,7 +416,7 @@ bool BenchmarkExecutor::loadStates(const std::string& regex, std::vector<StartSt
  */
 bool BenchmarkExecutor::loadQueries(const std::string& regex, const std::string& scene_name, std::vector<BenchmarkRequest>& queries)
 {
-	// check if queries are there or not
+	// check if queries/goal are there or not
 	if (regex.empty())
 	{
 		ROS_WARN("loadQueries --> No queries are available. Did you set Queries?");
@@ -589,4 +610,107 @@ void BenchmarkExecutor::collectMetrics(PlannerRunData& metrics, const planning_i
     metrics["process_time REAL"] = boost::lexical_cast<std::string>(process_time);
     std::cout<<"time: "<<process_time<<std::endl;
   }
+}
+
+void BenchmarkExecutor::writeOutput(const BenchmarkRequest& brequest, const std::string& start_time, double benchmark_duration)
+{
+	const std::map<std::string, std::vector<std::string>>& planners = options_.getPlannerConfigurations();
+	size_t num_planners = 0;
+	//store total no planner use in benchmark
+	for (std::map<std::string, std::vector<std::string>>::const_iterator it = planners.begin(); it != planners.end(); ++it)
+		num_planners += it->second.size();
+
+	std::string hostname = getHostname();
+	if (hostname.empty())
+		hostname = "UNKNOWN";
+
+	std::string filename = options_.getOutputDirectory();
+	  if (filename.size() && filename[filename.size() - 1] != '/')
+	    filename.append("/");
+
+	  // Ensure directories exist
+	  boost::filesystem::create_directories(filename);
+
+	  filename += (options_.getBenchmarkName().empty() ? "" : options_.getBenchmarkName() + "_") + brequest.name + "_" +
+	              getHostname() + "_" + start_time + ".log";
+	  std::ofstream out(filename.c_str());
+	  if (!out)
+	  {
+	    ROS_ERROR("Failed to open '%s' for benchmark output", filename.c_str());
+	    return;
+	  }
+
+	  out << "MoveIt! version " << MOVEIT_VERSION << std::endl;
+	  out << "Experiment " << brequest.name << std::endl;
+	  out << "Running on " << hostname << std::endl;
+	  out << "Starting at " << start_time << std::endl;
+
+	  // Experiment setup
+	  moveit_msgs::PlanningScene scene_msg;
+	  planning_scene_->getPlanningSceneMsg(scene_msg);
+	  out << "<<<|" << std::endl;
+	  out << "Motion plan request:" << std::endl << brequest.request << std::endl;
+	  out << "Planning scene: " << std::endl << scene_msg << std::endl << "|>>>" << std::endl;
+
+	  // Not writing optional cpu information
+
+	  // The real random seed is unknown.  Writing a fake value
+	  out << "0 is the random seed" << std::endl;
+	  out << brequest.request.allowed_planning_time << " seconds per run" << std::endl;
+	  // There is no memory cap
+	  out << "-1 MB per run" << std::endl;
+	  out << options_.getNumRuns() << " runs per planner" << std::endl;
+	  out << benchmark_duration << " seconds spent to collect the data" << std::endl;
+
+	  // No enum types
+	  out << "0 enum types" << std::endl;
+
+	  out << num_planners << " planners" << std::endl;
+
+	  size_t run_id = 0;
+	  for (std::map<std::string, std::vector<std::string>>::const_iterator it = planners.begin(); it != planners.end(); ++it)
+	  {
+	    for (std::size_t i = 0; i < it->second.size(); ++i, ++run_id)
+	    {
+	      // Write the name of the planner.
+	      out << it->second[i] << std::endl;
+	      // in general, we could have properties specific for a planner;
+	      // right now, we do not include such properties
+	      out << "0 common properties" << std::endl;
+
+	      // Create a list of the benchmark properties for this planner
+	      std::set<std::string> properties_set;
+	      for (std::size_t j = 0; j < benchmark_data_[run_id].size(); ++j)  // each run of this planner
+	        for (PlannerRunData::const_iterator pit = benchmark_data_[run_id][j].begin();
+	             pit != benchmark_data_[run_id][j].end(); ++pit)  // each benchmark property of the given run
+	          properties_set.insert(pit->first);
+
+	      // Writing property list
+	      out << properties_set.size() << " properties for each run" << std::endl;
+	      for (std::set<std::string>::const_iterator pit = properties_set.begin(); pit != properties_set.end(); ++pit)
+	        out << *pit << std::endl;
+
+	      // Number of runs
+	      out << benchmark_data_[run_id].size() << " runs" << std::endl;
+
+	      // And the benchmark properties
+	      for (std::size_t j = 0; j < benchmark_data_[run_id].size(); ++j)  // each run of this planner
+	      {
+	        // Write out properties in the order we listed them above
+	        for (std::set<std::string>::const_iterator pit = properties_set.begin(); pit != properties_set.end(); ++pit)
+	        {
+	          // Make sure this run has this property
+	          PlannerRunData::const_iterator runit = benchmark_data_[run_id][j].find(*pit);
+	          if (runit != benchmark_data_[run_id][j].end())
+	            out << runit->second;
+	          out << "; ";
+	        }
+	        out << std::endl;  // end of the run
+	      }
+	      out << "." << std::endl;  // end the planner
+	    }
+	  }
+
+	  out.close();
+	  ROS_INFO("Benchmark results saved to '%s'", filename.c_str());
 }
