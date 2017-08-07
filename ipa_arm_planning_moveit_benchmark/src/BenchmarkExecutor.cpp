@@ -523,6 +523,7 @@ bool BenchmarkExecutor::plannerConfigurationsExist(const std::map<std::string, s
 	    bool plugin_exists = false;
 	    for (std::map<std::string, planning_interface::PlannerManagerPtr>::const_iterator planner_it = planner_interfaces_.begin(); planner_it != planner_interfaces_.end() && !plugin_exists; ++planner_it)
 	    {
+	      ROS_WARN_STREAM(planner_it->first.c_str());
 	      plugin_exists = planner_it->first == it->first;
 	    }
 
@@ -620,9 +621,9 @@ void BenchmarkExecutor::collectMetrics(PlannerRunData& metrics, const planning_i
       }
 
       // Store all data into metrics
-      metrics["path_length REAL"] = boost::lexical_cast<std::string>(L);
-      metrics["path_smoothness REAL"] = boost::lexical_cast<std::string>(smoothness);
-      metrics["path_time REAL"] = boost::lexical_cast<std::string>(mp_res.processing_time_[j]);
+      metrics["path_plan_length REAL"] = boost::lexical_cast<std::string>(L);
+      metrics["path_plan_smoothness REAL"] = boost::lexical_cast<std::string>(smoothness);
+      metrics["path_plan_time REAL"] = boost::lexical_cast<std::string>(mp_res.processing_time_[j]);
       process_time -= mp_res.processing_time_[j];
     }
 
