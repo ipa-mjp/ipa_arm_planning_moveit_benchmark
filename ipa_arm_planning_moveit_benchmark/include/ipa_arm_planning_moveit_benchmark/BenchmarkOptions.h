@@ -42,6 +42,7 @@
 #include <vector>
 #include <ros/ros.h>
 #include <moveit_msgs/WorkspaceParameters.h>
+#include <moveit_msgs/DisplayTrajectory.h>
 
 namespace moveit_ros_benchmarks
 {
@@ -75,6 +76,8 @@ public:
   const std::string& getWorkspaceFrameID() const;
   const moveit_msgs::WorkspaceParameters& getWorkspaceParameters() const;
 
+  ros::Publisher display_publisher_;
+
 protected:
   void readBenchmarkOptions(const std::string& ros_namespace);
 
@@ -102,6 +105,8 @@ protected:
   std::string path_constraint_regex_;
   std::string trajectory_constraint_regex_;
   double goal_offsets[6];
+
+
 
   /// planner configurations
   std::map<std::string, std::vector<std::string>> planners_;

@@ -60,6 +60,8 @@ void BenchmarkOptions::readBenchmarkOptions(const std::string& ros_namespace)
 {
   ros::NodeHandle nh(ros_namespace);
 
+  display_publisher_ = nh.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 1, true);
+
   XmlRpc::XmlRpcValue benchmark_config;
   if (nh.getParam("benchmark_config", benchmark_config))
   {
