@@ -37,12 +37,12 @@
 #include <ros/ros.h>
 #include <string>
 
-#include <ipa_arm_planning_moveit_benchmark/BenchmarkOptions.h>
-#include <ipa_arm_planning_moveit_benchmark/BenchmarkExecutor.h>
+#include <moveit/benchmarks/BenchmarkOptions.h>
+#include <moveit/benchmarks/BenchmarkExecutor.h>
 
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "ipa_run_benchmark");
+  ros::init(argc, argv, "moveit_run_benchmark");
   ros::AsyncSpinner spinner(1);
   spinner.start();
 
@@ -53,7 +53,7 @@ int main(int argc, char** argv)
 
   std::vector<std::string> plugins;
   opts.getPlannerPluginList(plugins);
-  server.initializeBenchmarkExecutor(plugins);
+  server.initialize(plugins);
 
   // Running benchmarks
   if (!server.runBenchmarks(opts))
