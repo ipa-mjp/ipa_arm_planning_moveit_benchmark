@@ -119,6 +119,39 @@ void BenchmarkExecutor::initializeBenchmarkExecutor(const std::vector<std::strin
 	  }
 }
 
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void BenchmarkExecutor::clear()
+{
+  if (pss_)
+  {
+    delete pss_;
+    pss_ = NULL;
+  }
+  if (psws_)
+  {
+    delete psws_;
+    psws_ = NULL;
+  }
+  if (rs_)
+  {
+    delete rs_;
+    rs_ = NULL;
+  }
+  if (cs_)
+  {
+    delete cs_;
+    cs_ = NULL;
+  }
+  if (tcs_)
+  {
+    delete tcs_;
+    tcs_ = NULL;
+  }
+
+  benchmark_data_.clear();
+}
+
+
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 /**
  * Plan using planning scene context of every available plugins with one queries.
@@ -141,17 +174,24 @@ void BenchmarkExecutor::executeBenchmark(moveit_msgs::MotionPlanRequest request,
 
 			for (int j = 0; j < runs; ++j)
 			{
+				ROS_WARN_STREAM(j);
 				planning_interface::MotionPlanDetailedResponse mp_res;
-				planning_interface::MotionPlanResponse res;
+//				planning_interface::MotionPlanResponse res;
 				ros::WallTime start = ros::WallTime::now();
 				bool solved = contex->solve(mp_res);
-				bool solved1 = contex->solve(res);
-				double total_time = (ros::WallTime::now() - start).toSec();
 
+				if (mp_res.error_code_.val != mp_res.error_code_.SUCCESS)
+				{
+					ROS_ERROR("executeBenchmark --> Could not compute plan successfully");
+					solved = false;
+				}
+				double total_time = (ros::WallTime::now() - start).toSec();
+/*
+  				bool solved1 = contex->solve(res);
 
 				moveit_msgs::DisplayTrajectory display_trajectory;
 
-				/* Visualize the trajectory */
+				// Visualize the trajectory
 				ROS_INFO("Visualizing the trajectory");
 				moveit_msgs::MotionPlanResponse response;
 				res.getMessage(response);
@@ -159,13 +199,13 @@ void BenchmarkExecutor::executeBenchmark(moveit_msgs::MotionPlanRequest request,
 				display_trajectory.trajectory_start = response.trajectory_start;
 				display_trajectory.trajectory.push_back(response.trajectory);
 				options_.display_publisher_.publish(display_trajectory);
-
+*/
 				//collect data
 				start = ros::WallTime::now();
 
 				collectMetrics(planner_data[j], mp_res, solved, total_time);
-				//double metrics_time = (ros::WallTime::now() - start).toSec();
-				//ROS_DEBUG("Spent %lf seconds collecting metrics", metrics_time);
+				double metrics_time = (ros::WallTime::now() - start).toSec();
+				ROS_DEBUG("Spent %lf seconds collecting metrics", metrics_time);
 
 			}
 
@@ -210,7 +250,7 @@ bool BenchmarkExecutor::runBenchmarks(const BenchmarkOptions& opts)
 
 			executeBenchmark(queries[i].request, opts.getPlannerConfigurations(), opts.getNumRuns());
 			double duration = (ros::WallTime::now() - start_time).toSec();
-			//writeOutput(queries[i], boost::posix_time::to_iso_extended_string(start_time.toBoost()), duration);
+			writeOutput(queries[i], boost::posix_time::to_iso_extended_string(start_time.toBoost()), duration);
 		}
 		return true;
 	}
@@ -537,78 +577,58 @@ void BenchmarkExecutor::collectMetrics(PlannerRunData& metrics, const planning_i
     bool correct = true;      // entire trajectory collision free and in bounds
 
     double process_time = 1.0;
+
+    //iterate over no of trajectory, it should be 1.
     for (std::size_t j = 0; j < mp_res.trajectory_.size(); ++j)
     {
+     //ROS_WARN_STREAM("size: "<<mp_res.trajectory_.size());
+
       correct = true;
       L = 0.0;
       clearance = 0.0;
       smoothness = 0.0;
       const robot_trajectory::RobotTrajectory& p = *mp_res.trajectory_[j];
 
+      //ROS_WARN_STREAM("wayPoint: "<< p.getWayPointCount());
+
       // compute path length
       for (std::size_t k = 1; k < p.getWayPointCount(); ++k)
         L += p.getWayPoint(k - 1).distance(p.getWayPoint(k));
 
-      // compute correctness and clearance
-      collision_detection::CollisionRequest req;
-      for (std::size_t k = 0; k < p.getWayPointCount(); ++k)
-      {
-        collision_detection::CollisionResult res;
-        planning_scene_->checkCollisionUnpadded(req, res, p.getWayPoint(k));
-        if (res.collision)
-          correct = false;
-        if (!p.getWayPoint(k).satisfiesBounds())
-          correct = false;
-        double d = planning_scene_->distanceToCollisionUnpadded(p.getWayPoint(k));
-        if (d > 0.0)  // in case of collision, distance is negative
-          clearance += d;
-      }
-      clearance /= (double)p.getWayPointCount();
-
-      // compute smoothness
+      //compute smoothness //this is gives interpolation smoothness not path plan smoothness
       if (p.getWayPointCount() > 2)
       {
-        double a = p.getWayPoint(0).distance(p.getWayPoint(1));
-        for (std::size_t k = 2; k < p.getWayPointCount(); ++k)
-        {
-          // view the path as a sequence of segments, and look at the triangles it forms:
-          //          s1
-          //          /\          s4
-          //      a  /  \ b       |
-          //        /    \        |
-          //       /......\_______|
-          //     s0    c   s2     s3
-          //
+    	  double a = p.getWayPoint(0).distance(p.getWayPoint(1));
 
-          // use Pythagoras generalized theorem to find the cos of the angle between segments a and b
-          double b = p.getWayPoint(k - 1).distance(p.getWayPoint(k));
-          double cdist = p.getWayPoint(k - 2).distance(p.getWayPoint(k));
-          double acosValue = (a * a + b * b - cdist * cdist) / (2.0 * a * b);
-          if (acosValue > -1.0 && acosValue < 1.0)
-          {
-            // the smoothness is actually the outside angle of the one we compute
-            double angle = (boost::math::constants::pi<double>() - acos(acosValue));
+    	  for (std::size_t k = 2; k < p.getWayPointCount(); ++k)
+    	  {
+    		  double b = p.getWayPoint(k-1).distance(p.getWayPoint(k));
+    		  double cdist = p.getWayPoint(k-2).distance(p.getWayPoint(k));
+    		  double acosValue = (a * a + b * b - cdist * cdist) / (2.0 * a * b);
+    	      if (acosValue > -1.0 && acosValue < 1.0)
+    	      {
+    	    	  // the smoothness is actually the outside angle of the one we compute
+    	    	  double angle = (boost::math::constants::pi<double>() - acos(acosValue));
 
-            // and we normalize by the length of the segments
-            double u = 2.0 * angle;  /// (a + b);
-            smoothness += u * u;
-          }
-          a = b;
-        }
-        smoothness /= (double)p.getWayPointCount();
+    	    	  // and we normalize by the length of the segments
+    	    	  double u = 2.0 * angle;  /// (a + b);
+    	    	  smoothness += u * u;
+    	      }
+    	      a = b;
+    	  }
+    	  smoothness /= double(p.getWayPointCount());
       }
-      metrics["path_" + mp_res.description_[j] + "_correct BOOLEAN"] = boost::lexical_cast<std::string>(correct);
-      metrics["path_" + mp_res.description_[j] + "_length REAL"] = boost::lexical_cast<std::string>(L);
-      metrics["path_" + mp_res.description_[j] + "_clearance REAL"] = boost::lexical_cast<std::string>(clearance);
-      metrics["path_" + mp_res.description_[j] + "_smoothness REAL"] = boost::lexical_cast<std::string>(smoothness);
-      metrics["path_" + mp_res.description_[j] + "_time REAL"] =
-          boost::lexical_cast<std::string>(mp_res.processing_time_[j]);
+
+      // Store all data into metrics
+      metrics["path_length REAL"] = boost::lexical_cast<std::string>(L);
+      metrics["path_smoothness REAL"] = boost::lexical_cast<std::string>(smoothness);
+      metrics["path_time REAL"] = boost::lexical_cast<std::string>(mp_res.processing_time_[j]);
       process_time -= mp_res.processing_time_[j];
     }
-    if (process_time <= 0.0)
-      process_time = 0.0;
+
+    if (process_time <= 0.0)	process_time = 0.0;
     metrics["process_time REAL"] = boost::lexical_cast<std::string>(process_time);
-    std::cout<<"time: "<<process_time<<std::endl;
+
   }
 }
 
@@ -681,8 +701,7 @@ void BenchmarkExecutor::writeOutput(const BenchmarkRequest& brequest, const std:
 	      // Create a list of the benchmark properties for this planner
 	      std::set<std::string> properties_set;
 	      for (std::size_t j = 0; j < benchmark_data_[run_id].size(); ++j)  // each run of this planner
-	        for (PlannerRunData::const_iterator pit = benchmark_data_[run_id][j].begin();
-	             pit != benchmark_data_[run_id][j].end(); ++pit)  // each benchmark property of the given run
+	        for (PlannerRunData::const_iterator pit = benchmark_data_[run_id][j].begin(); pit != benchmark_data_[run_id][j].end(); ++pit)  // each benchmark property of the given run
 	          properties_set.insert(pit->first);
 
 	      // Writing property list

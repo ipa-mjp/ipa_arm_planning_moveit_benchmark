@@ -43,6 +43,8 @@ public:
 
   virtual bool runBenchmarks(const BenchmarkOptions& opts);
 
+  virtual void clear();
+
 protected:
 
   struct BenchmarkRequest
