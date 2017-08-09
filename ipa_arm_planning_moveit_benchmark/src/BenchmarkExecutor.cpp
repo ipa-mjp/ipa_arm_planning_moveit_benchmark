@@ -176,7 +176,7 @@ void BenchmarkExecutor::executeBenchmark(moveit_msgs::MotionPlanRequest request,
 			{
 				ROS_WARN_STREAM(j);
 				planning_interface::MotionPlanDetailedResponse mp_res;
-				planning_interface::MotionPlanResponse res;
+//				planning_interface::MotionPlanResponse res;
 				ros::WallTime start = ros::WallTime::now();
 				bool solved = contex->solve(mp_res);
 
@@ -187,7 +187,7 @@ void BenchmarkExecutor::executeBenchmark(moveit_msgs::MotionPlanRequest request,
 				}
 				double total_time = (ros::WallTime::now() - start).toSec();
 
-  				bool solved1 = contex->solve(res);
+/*  				bool solved1 = contex->solve(res);
 
 				moveit_msgs::DisplayTrajectory display_trajectory;
 
@@ -199,7 +199,7 @@ void BenchmarkExecutor::executeBenchmark(moveit_msgs::MotionPlanRequest request,
 				display_trajectory.trajectory_start = response.trajectory_start;
 				display_trajectory.trajectory.push_back(response.trajectory);
 				options_.display_publisher_.publish(display_trajectory);
-
+*/
 				//collect data
 				start = ros::WallTime::now();
 
