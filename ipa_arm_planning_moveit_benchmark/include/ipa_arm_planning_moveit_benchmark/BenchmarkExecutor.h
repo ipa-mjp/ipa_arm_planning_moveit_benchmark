@@ -15,6 +15,7 @@
 #include <moveit/planning_interface/planning_interface.h>
 #include <warehouse_ros/database_loader.h>
 #include <pluginlib/class_loader.h>
+#include <moveit/move_group_interface/move_group.h>
 
 #include <map>
 #include <vector>
@@ -111,6 +112,8 @@ protected:
   std::map<std::string, planning_interface::PlannerManagerPtr> planner_interfaces_;
 
   std::vector<PlannerBenchmarkData> benchmark_data_;
+
+  boost::scoped_ptr<moveit::planning_interface::MoveGroup> group;
 
 };
 }

@@ -80,6 +80,8 @@ void BenchmarkExecutor::initializeBenchmarkExecutor(const std::vector<std::strin
 
 	planner_interfaces_.clear();
 
+	group.reset(new moveit::planning_interface::MoveGroup("arm"));
+
 	// Load the planning plugins
 	const std::vector<std::string>& classes = planner_plugin_loader_->getDeclaredClasses();
 
