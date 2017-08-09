@@ -169,6 +169,11 @@ const moveit_msgs::WorkspaceParameters& BenchmarkOptions::getWorkspaceParameters
   return workspace_;
 }
 
+const moveit_msgs::Constraints& BenchmarkOptions::getConstraints() const
+{
+	return constraints_;
+}
+
 void BenchmarkOptions::readWarehouseOptions(ros::NodeHandle& nh)
 {
   nh.param(std::string("benchmark_config/warehouse/host"), hostname_, std::string("127.0.0.1"));
@@ -192,8 +197,10 @@ void BenchmarkOptions::readBenchmarkParameters(ros::NodeHandle& nh)
   nh.param(std::string("benchmark_config/parameters/start_states"), start_state_regex_, std::string(""));
   nh.param(std::string("benchmark_config/parameters/goal_constraints"), goal_constraint_regex_, std::string(""));
   nh.param(std::string("benchmark_config/parameters/path_constraints"), path_constraint_regex_, std::string(""));
-  nh.param(std::string("benchmark_config/parameters/trajectory_constraints"), trajectory_constraint_regex_,
-           std::string(""));
+  nh.param(std::string("benchmark_config/parameters/trajectory_constraints"), trajectory_constraint_regex_, std::string(""));
+
+  if ( readJointConstraints(nh) )
+	  ROS_INFO("Joint constraints are set successfully");
 
   if (!nh.getParam(std::string("benchmark_config/parameters/group"), group_name_))
     ROS_WARN("Benchmark group NOT specified");
@@ -285,4 +292,65 @@ void BenchmarkOptions::readPlannerConfigs(ros::NodeHandle& nh)
       planners_[plugin] = planners;
     }
   }
+}
+
+bool BenchmarkOptions::readJointConstraints(ros::NodeHandle& nh)
+{
+	moveit_msgs::JointConstraint ocm;
+
+	XmlRpc::XmlRpcValue joint_constraint_vector;
+	if(!nh.getParam(ros::this_node::getName() + "/joint_constraint_limits", joint_constraint_vector))
+	{
+		ROS_ERROR("No values available for joint constraints");
+		return false;
+	}
+
+	for(XmlRpc::XmlRpcValue::iterator it = joint_constraint_vector.begin(); it != joint_constraint_vector.end(); ++it)
+	{
+
+		ocm.joint_name = it->first;
+		ocm.weight = 0.9;
+
+		if(!nh.getParam(ros::this_node::getName() + "/joint_constraint_limits/" + it->first + "/ceneter_position", ocm.position))
+			ROS_ERROR("ArmPlanner::setJointConstraint --> No value available for joint constraints center position");
+
+		if(!nh.getParam(ros::this_node::getName() + "/joint_constraint_limits/" + it->first + "/tolerance_above", ocm.tolerance_above))
+			ROS_ERROR("ArmPlanner::setJointConstraint --> No value available for joint constraints tolerance_above");
+
+		if(!nh.getParam(ros::this_node::getName() + "/joint_constraint_limits/" + it->first + "/tolerance_below", ocm.tolerance_below))
+			ROS_ERROR("ArmPlanner::setJointConstraint --> No value available for joint constraints tolerance_below");
+
+
+		constraints_.joint_constraints.push_back(ocm);
+	}
+	return true;
+}
+
+void BenchmarkOptions::readOrientationConstraints(ros::NodeHandle& nh)
+{
+	moveit_msgs::OrientationConstraint ocm;
+
+	XmlRpc::XmlRpcValue orient_constraint_vector;
+	if(!nh.getParam(ros::this_node::getName() + "/joint_constraint_limits", orient_constraint_vector))
+	{
+		ROS_ERROR("No values available for joint constraints");
+	}
+
+	for(XmlRpc::XmlRpcValue::iterator it = orient_constraint_vector.begin(); it != orient_constraint_vector.end(); ++it)
+	{
+
+		ocm.link_name = it->first;
+
+		nh.param(std::string("/orientation_constraint_limits/" + it->first + "/ox"), ocm.orientation.x, 0.0);
+		nh.param(std::string("/orientation_constraint_limits/" + it->first + "/oy"), ocm.orientation.y, 0.0);
+		nh.param(std::string("/orientation_constraint_limits/" + it->first + "/oz"), ocm.orientation.z, 0.0);
+		nh.param(std::string("/orientation_constraint_limits/" + it->first + "/ow"), ocm.orientation.w, 1.0);
+
+		nh.param(std::string("/orientation_constraint_limits/" + it->first + "/absolute_x_axis_tolerance"), ocm.absolute_x_axis_tolerance, 5.0);
+		nh.param(std::string("/orientation_constraint_limits/" + it->first + "/absolute_y_axis_tolerance"), ocm.absolute_y_axis_tolerance, 5.0);
+		nh.param(std::string("/orientation_constraint_limits/" + it->first + "/absolute_z_axis_tolerance"), ocm.absolute_z_axis_tolerance, 5.0);
+		nh.param(std::string("/orientation_constraint_limits/" + it->first + "/weight"), ocm.weight, 0.9);
+
+		constraints_.orientation_constraints.push_back(ocm);
+	}
 }

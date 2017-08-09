@@ -41,6 +41,7 @@
 #include <map>
 #include <vector>
 #include <ros/ros.h>
+#include <moveit_msgs/Constraints.h>
 #include <moveit_msgs/WorkspaceParameters.h>
 #include <moveit_msgs/DisplayTrajectory.h>
 
@@ -75,6 +76,7 @@ public:
 
   const std::string& getWorkspaceFrameID() const;
   const moveit_msgs::WorkspaceParameters& getWorkspaceParameters() const;
+  const moveit_msgs::Constraints& getConstraints() const;
 
   ros::Publisher display_publisher_;
 
@@ -88,6 +90,8 @@ protected:
   void readWorkspaceParameters(ros::NodeHandle& nh);
   void readGoalOffset(ros::NodeHandle& nh);
 
+  bool readJointConstraints(ros::NodeHandle& nh);
+  void readOrientationConstraints(ros::NodeHandle& nh);
   /// warehouse parameters
   std::string hostname_;
   int port_;
@@ -112,6 +116,7 @@ protected:
   std::map<std::string, std::vector<std::string>> planners_;
 
   moveit_msgs::WorkspaceParameters workspace_;
+  moveit_msgs::Constraints constraints_;
 };
 }
 

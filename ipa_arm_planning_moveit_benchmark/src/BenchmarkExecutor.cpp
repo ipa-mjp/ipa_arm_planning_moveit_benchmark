@@ -176,7 +176,7 @@ void BenchmarkExecutor::executeBenchmark(moveit_msgs::MotionPlanRequest request,
 			{
 				ROS_WARN_STREAM(j);
 				planning_interface::MotionPlanDetailedResponse mp_res;
-//				planning_interface::MotionPlanResponse res;
+				planning_interface::MotionPlanResponse res;
 				ros::WallTime start = ros::WallTime::now();
 				bool solved = contex->solve(mp_res);
 
@@ -186,7 +186,7 @@ void BenchmarkExecutor::executeBenchmark(moveit_msgs::MotionPlanRequest request,
 					solved = false;
 				}
 				double total_time = (ros::WallTime::now() - start).toSec();
-/*
+
   				bool solved1 = contex->solve(res);
 
 				moveit_msgs::DisplayTrajectory display_trajectory;
@@ -199,7 +199,7 @@ void BenchmarkExecutor::executeBenchmark(moveit_msgs::MotionPlanRequest request,
 				display_trajectory.trajectory_start = response.trajectory_start;
 				display_trajectory.trajectory.push_back(response.trajectory);
 				options_.display_publisher_.publish(display_trajectory);
-*/
+
 				//collect data
 				start = ros::WallTime::now();
 
@@ -322,8 +322,10 @@ bool BenchmarkExecutor::initializeBenchmarks(const BenchmarkOptions& opts, movei
 
 	std::vector<StartState> start_states;
 	std::vector<BenchmarkRequest> queries;	//goal state
+	std::vector<PathConstraints> path_constraints;
+
 	bool ok =	loadPlanningScene(opts.getSceneName(), scene_msg) && loadStates(opts.getStartStateRegex(), start_states) &&
-				loadQueries(opts.getQueryRegex(), opts.getSceneName(), queries);
+				loadQueries(opts.getQueryRegex(), opts.getSceneName(), queries) && loadPathConstraints( path_constraints);
 
 	if (! ok)
 	{
@@ -332,7 +334,7 @@ bool BenchmarkExecutor::initializeBenchmarks(const BenchmarkOptions& opts, movei
 	}
 
 	else
-		ROS_INFO("Benchmark loaded %lu starts , and %lu queries", start_states.size(), queries.size());
+		ROS_INFO("Benchmark loaded %lu starts , %lu path constraints, and %lu queries", start_states.size(), path_constraints.size(), queries.size());
 
 //	ROS_WARN_STREAM("group_name: "<<queries[0].name);
 //	ROS_INFO_STREAM("queries: "<<queries[0].request.start_state.joint_state);
@@ -346,11 +348,60 @@ bool BenchmarkExecutor::initializeBenchmarks(const BenchmarkOptions& opts, movei
 		brequest.request.group_name = opts.getGroupName();
 		brequest.request.allowed_planning_time = opts.getTimeout();
 		brequest.request.num_planning_attempts = 1;
+		brequest.request.path_constraints = path_constraints[0].constraints[0];
+		brequest.request.start_state = start_states[0].state;
 		requests.push_back(brequest);
+/*
+		std::vector<BenchmarkRequest> request_combs;
+		std::vector<PathConstraints> no_path_constraints;
+		createRequestCombinations(brequest, start_states, no_path_constraints, request_combs);
+		requests.insert(requests.end(), request_combs.begin(), request_combs.end());*/
 	}
 	options_ = opts;
 	return true;
 }
+
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+// Create request combination of start state and path constraints
+void BenchmarkExecutor::createRequestCombinations(const BenchmarkRequest& brequest, const std::vector<StartState>& start_states,
+												  const std::vector<PathConstraints>& path_constraints, std::vector<BenchmarkRequest>& request_combs )
+{
+	if (start_states.empty())
+	{
+		for (std::vector<PathConstraints>::const_iterator it = path_constraints.begin(); it != path_constraints.end(); ++it)
+		{
+			BenchmarkRequest new_request = brequest;
+			new_request.request.path_constraints = it->constraints[0];
+			new_request.name = " ";
+			request_combs.push_back(new_request);
+		}
+		if (path_constraints.empty())
+			request_combs.push_back(brequest);
+	}
+
+	else
+	{
+		for (std::vector<StartState>::const_iterator it_state = start_states.begin(); it_state!= start_states.end(); ++it_state)
+		{
+			BenchmarkRequest new_brequest = brequest;
+			new_brequest.request.start_state = it_state->state;
+			new_brequest.name = " ";
+
+			for (std::vector<PathConstraints>::const_iterator it = path_constraints.begin(); it != path_constraints.end(); ++it)
+			{
+				new_brequest.request.path_constraints = it->constraints[0];
+				request_combs.push_back(new_brequest);
+			}
+			if (path_constraints.empty())
+				request_combs.push_back(new_brequest);
+
+		}
+	}
+}
+
+
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -506,6 +557,25 @@ bool BenchmarkExecutor::loadQueries(const std::string& regex, const std::string&
 
 	return true;
 }
+
+
+//----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+bool BenchmarkExecutor::loadPathConstraints(std::vector<PathConstraints>& constraints)
+{
+	PathConstraints constraint;
+	constraint.constraints.push_back(options_.getConstraints());
+	constraint.name = " ";
+
+	constraints.push_back(constraint);
+	if (constraints.empty())
+		ROS_WARN("loadPathConstraints --> No path constraints found");
+	else
+		ROS_INFO("loadPathConstraints --> Loaded path constraints successfully");
+
+	return true;
+}
+
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 

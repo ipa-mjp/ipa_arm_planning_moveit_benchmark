@@ -26,6 +26,7 @@
 	<!-- Launch benchmark node -->
 	<node name="move_group" pkg="ipa_arm_planning_moveit_benchmark" type="ipa_run_benchmark" output="screen" required="true">
 		<rosparam command="load" file="$(arg bench_opts)"/>
+		<rosparam command="load" file="$(find ipa_moveit_config)/robots/$(arg robot)/moveit/config/constraints_limit.yaml"/>
 	</node>
 </launch>
 
