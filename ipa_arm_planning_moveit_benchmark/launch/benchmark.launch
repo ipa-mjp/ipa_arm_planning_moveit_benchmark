@@ -6,7 +6,7 @@
 	<arg name="debug" default="false" />
 	<arg name="moveit_warehouse_database_path" default="$(find ipa_arm_planning_moveit_benchmark)/benchmark_config/benchmark_moveit_config" />		 		
 
-	<!-- move group -->
+	<!-- move group -->  	
 	<include file="$(find ipa_moveit_bringup)/launch/move_group.launch">
 		<arg name="robot" value="$(arg robot)"/>
 		<arg name="pipeline" value="$(arg pipeline)"/>
@@ -20,7 +20,7 @@
     	<arg name="config" value="true"/>
     	<arg name="debug" value="$(arg debug)"/>
   	</include>
-
+  		
 	<!-- Load warehouse containing scenes and queries to benchmark -->
 	<include file="$(find ipa_moveit_bringup)/launch/default_warehouse_db.launch">
 		<arg name="moveit_warehouse_database_path" value="$(arg moveit_warehouse_database_path)"/>

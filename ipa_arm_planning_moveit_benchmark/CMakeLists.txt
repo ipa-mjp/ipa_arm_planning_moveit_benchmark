@@ -1,51 +1,53 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(ipa_arm_planning_moveit_benchmark)
-
-set(IPA_LIB_NAME ipa_benchmarks)
-
 add_compile_options(-std=c++11)
-
-if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
-endif()
-
-find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  rospy
-  std_msgs
-  moveit_ros_planning
-  moveit_ros_warehouse
+set(catkin_RUN_PACKAGES
+	actionlib
+	actionlib_msgs
+	geometry_msgs
+	moveit_core
+	moveit_ros_perception
+	moveit_ros_planning
+	moveit_ros_planning_interface
+	pluginlib
+	roscpp
+	roslib
+	rospy
+	sensor_msgs
+	std_msgs
+	std_srvs
+	tf
+	tf_conversions
 )
 
-find_package(Boost REQUIRED COMPONENTS system)
+set(catkin_BUILD_PACKAGES 
+	${catkin_RUN_PACKAGES}
+	cmake_modules
+)
+
+find_package(catkin REQUIRED COMPONENTS
+	${catkin_BUILD_PACKAGES} # this makes ${catkin_LIBRARIES} include all libraries of ${catkin_BUILD_PACKAGES}
+)
+
+## System dependencies are found with CMake's conventions
+find_package(Boost REQUIRED system filesystem date_time thread)
+
 
 catkin_package(
-  INCLUDE_DIRS ${CMAKE_CURRENT_LIST_DIR}/include
-  LIBRARIES ${IPA_LIB_NAME}
-  CATKIN_DEPENDS roscpp rospy std_msgs moveit_ros_planning moveit_ros_warehouse
-  DEPENDS
+	INCLUDE_DIRS
+		include	
+	CATKIN_DEPENDS
+		${catkin_RUN_PACKAGES}  
+	DEPENDS
 )
 
 include_directories(
-# include
-  ${catkin_INCLUDE_DIRS}
+	include
+	${catkin_INCLUDE_DIRS}
+	${Boost_INCLUDE_DIR}
 )
 
 
-include_directories(${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_LIST_DIR}/include)
-link_directories(${catkin_LIBRARY_DIRS})
-
-add_library(${IPA_LIB_NAME} src/BenchmarkOptions.cpp
-                               src/BenchmarkExecutor.cpp)
-
-set_target_properties(${IPA_LIB_NAME} PROPERTIES VERSION ${${PROJECT_NAME}_VERSION})
-target_link_libraries(${IPA_LIB_NAME} ${catkin_LIBRARIES} ${Boost_LIBRARIES})
-
-add_executable(ipa_run_benchmark src/RunBenchmark.cpp)
-target_link_libraries(ipa_run_benchmark ${IPA_LIB_NAME} ${catkin_LIBRARIES} ${Boost_LIBRARIES})
-
-install(
-  TARGETS
-    ${IPA_LIB_NAME} ipa_run_benchmark
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+add_executable(ipa_run_benchmark src/BenchmarkOptions.cpp src/BenchmarkExecutor.cpp  src/RunBenchmark.cpp)
+add_dependencies(ipa_run_benchmark ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(ipa_run_benchmark ${catkin_LIBRARIES})

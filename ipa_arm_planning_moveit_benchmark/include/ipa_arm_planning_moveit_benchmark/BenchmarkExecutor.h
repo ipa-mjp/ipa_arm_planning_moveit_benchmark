@@ -15,7 +15,7 @@
 #include <moveit/planning_interface/planning_interface.h>
 #include <warehouse_ros/database_loader.h>
 #include <pluginlib/class_loader.h>
-#include <moveit/move_group_interface/move_group.h>
+#include <moveit/move_group_interface/move_group_interface.h>
 
 #include <map>
 #include <vector>
@@ -71,10 +71,10 @@ protected:
 
   virtual void writeOutput(const BenchmarkRequest& brequest, const std::string& start_time, double benchmark_duration);
 
-  void executeBenchmark(moveit_msgs::MotionPlanRequest request, const std::map<std::string, std::vector<std::string>>& planners, int runs);
+  void executeBenchmark(moveit_msgs::MotionPlanRequest request, moveit_msgs::PlanningScene scene_msg,  const std::map<std::string, std::vector<std::string>>& planners, int runs);
 
   /// Check that the given requests can be run on the set of planner plugins and algorithms
-    bool queriesAndPlannersCompatible(const std::vector<BenchmarkRequest>& requests);
+  bool queriesAndPlannersCompatible(const std::vector<BenchmarkRequest>& requests);
 
 
   bool plannerConfigurationsExist(const std::map<std::string, std::vector<std::string>>& planners, const std::string& group_name);
@@ -113,7 +113,7 @@ protected:
 
   std::vector<PlannerBenchmarkData> benchmark_data_;
 
-  boost::scoped_ptr<moveit::planning_interface::MoveGroup> group;
+  boost::scoped_ptr<moveit::planning_interface::MoveGroupInterface> group;
 
 };
 }

@@ -80,8 +80,6 @@ void BenchmarkExecutor::initializeBenchmarkExecutor(const std::vector<std::strin
 
 	planner_interfaces_.clear();
 
-	group.reset(new moveit::planning_interface::MoveGroup("arm"));
-
 	// Load the planning plugins
 	const std::vector<std::string>& classes = planner_plugin_loader_->getDeclaredClasses();
 
@@ -161,9 +159,14 @@ void BenchmarkExecutor::clear()
  * @param planner = iterate over all plugins
  * @param runs = no. of time want to run each plugins
  */
-void BenchmarkExecutor::executeBenchmark(moveit_msgs::MotionPlanRequest request, const std::map<std::string, std::vector<std::string>>& planners, int runs)
+void BenchmarkExecutor::executeBenchmark(moveit_msgs::MotionPlanRequest request, moveit_msgs::PlanningScene scene_msg, const std::map<std::string, std::vector<std::string>>& planners, int runs)
 {
 //TODO: ompl consider by default planner not load define planner checkit out and correct it
+
+	group.reset(new moveit::planning_interface::MoveGroupInterface(options_.getGroupName()));
+
+
+
 	benchmark_data_.clear();
 
 	for (std::map<std::string, std::vector<std::string>>::const_iterator it = planners.begin(); it != planners.end(); ++it)
@@ -172,40 +175,56 @@ void BenchmarkExecutor::executeBenchmark(moveit_msgs::MotionPlanRequest request,
 		{
 			PlannerBenchmarkData planner_data(runs);
 
+			  ROS_WARN_STREAM("scene_msgs: "<<scene_msg.robot_state);
+
+			group->constructMotionPlanRequest(request);
+			group->setPlannerId(*planner_it);
+			group->setStartState(request.start_state);
+			group->setJointValueTarget(scene_msg.robot_state.joint_state);
+			group->setPathConstraints(request.path_constraints);
+
+			moveit::planning_interface::MoveGroupInterface::Plan plan;
 			planning_interface::PlanningContextPtr contex = planner_interfaces_[it->first]->getPlanningContext(planning_scene_, request);
+
+
 
 			for (int j = 0; j < runs; ++j)
 			{
 				ROS_WARN_STREAM(j);
-				planning_interface::MotionPlanDetailedResponse mp_res;
+				//planning_interface::MotionPlanDetailedResponse mp_res;
 //				planning_interface::MotionPlanResponse res;
 				ros::WallTime start = ros::WallTime::now();
-				bool solved = contex->solve(mp_res);
+				//bool solved = contex->solve(mp_res);
+				bool solved = group->plan(plan);
 
-				if (mp_res.error_code_.val != mp_res.error_code_.SUCCESS)
+				double total_time = (ros::WallTime::now() - start).toSec();
+
+				ROS_WARN_STREAM("total_time: "<<total_time);
+
+				if (!solved)
 				{
 					ROS_ERROR("executeBenchmark --> Could not compute plan successfully");
 					solved = false;
 				}
-				double total_time = (ros::WallTime::now() - start).toSec();
 
-/*  				bool solved1 = contex->solve(res);
+
+//  				bool solved1 = contex->solve(res);
 
 				moveit_msgs::DisplayTrajectory display_trajectory;
 
 				// Visualize the trajectory
 				ROS_INFO("Visualizing the trajectory");
-				moveit_msgs::MotionPlanResponse response;
-				res.getMessage(response);
+//				moveit_msgs::MotionPlanResponse response;
+//				res.getMessage(response);
 
-				display_trajectory.trajectory_start = response.trajectory_start;
-				display_trajectory.trajectory.push_back(response.trajectory);
+				display_trajectory.trajectory_start = plan.start_state_;
+				display_trajectory.trajectory.push_back(plan.trajectory_);
 				options_.display_publisher_.publish(display_trajectory);
-*/
+
 				//collect data
 				start = ros::WallTime::now();
 
-				collectMetrics(planner_data[j], mp_res, solved, total_time);
+//				collectMetrics(planner_data[j], mp_res, solved, total_time);
 				double metrics_time = (ros::WallTime::now() - start).toSec();
 				ROS_DEBUG("Spent %lf seconds collecting metrics", metrics_time);
 
@@ -250,7 +269,7 @@ bool BenchmarkExecutor::runBenchmarks(const BenchmarkOptions& opts)
 			ROS_INFO("Benchmarking query '%s' (%lu of %lu)", queries[i].name.c_str(), i + 1, queries.size());
 			ros::WallTime start_time = ros::WallTime::now();
 
-			executeBenchmark(queries[i].request, opts.getPlannerConfigurations(), opts.getNumRuns());
+			executeBenchmark(queries[i].request, scene_msg, opts.getPlannerConfigurations(), opts.getNumRuns());
 			double duration = (ros::WallTime::now() - start_time).toSec();
 			writeOutput(queries[i], boost::posix_time::to_iso_extended_string(start_time.toBoost()), duration);
 		}
