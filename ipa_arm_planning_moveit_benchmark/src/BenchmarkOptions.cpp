@@ -202,6 +202,9 @@ void BenchmarkOptions::readBenchmarkParameters(ros::NodeHandle& nh)
   if ( readJointConstraints(nh) )
 	  ROS_INFO("Joint constraints are set successfully");
 
+  if ( readOrientationConstraints(nh) )
+	  ROS_INFO("Orientation constraints are set successfully");
+
   if (!nh.getParam(std::string("benchmark_config/parameters/group"), group_name_))
     ROS_WARN("Benchmark group NOT specified");
 
@@ -326,14 +329,15 @@ bool BenchmarkOptions::readJointConstraints(ros::NodeHandle& nh)
 	return true;
 }
 
-void BenchmarkOptions::readOrientationConstraints(ros::NodeHandle& nh)
+bool BenchmarkOptions::readOrientationConstraints(ros::NodeHandle& nh)
 {
 	moveit_msgs::OrientationConstraint ocm;
 
 	XmlRpc::XmlRpcValue orient_constraint_vector;
-	if(!nh.getParam(ros::this_node::getName() + "/joint_constraint_limits", orient_constraint_vector))
+	if(!nh.getParam(ros::this_node::getName() + "/orientation_constraint_limits", orient_constraint_vector))
 	{
 		ROS_ERROR("No values available for joint constraints");
+		return false;
 	}
 
 	for(XmlRpc::XmlRpcValue::iterator it = orient_constraint_vector.begin(); it != orient_constraint_vector.end(); ++it)
@@ -353,4 +357,5 @@ void BenchmarkOptions::readOrientationConstraints(ros::NodeHandle& nh)
 
 		constraints_.orientation_constraints.push_back(ocm);
 	}
+	return true;
 }

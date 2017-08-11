@@ -15,6 +15,8 @@
 #include <moveit/planning_interface/planning_interface.h>
 #include <warehouse_ros/database_loader.h>
 #include <pluginlib/class_loader.h>
+#include <moveit/kinematic_constraints/utils.h>
+#include <moveit/kinematic_constraints/kinematic_constraint.h>
 
 #include <map>
 #include <vector>

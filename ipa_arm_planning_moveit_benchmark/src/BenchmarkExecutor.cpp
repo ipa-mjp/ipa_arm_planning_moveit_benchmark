@@ -169,6 +169,11 @@ void BenchmarkExecutor::executeBenchmark(moveit_msgs::MotionPlanRequest request,
 		for (std::vector<std::string>::const_iterator planner_it = it->second.begin(); planner_it!= it->second.end(); ++planner_it)
 		{
 			PlannerBenchmarkData planner_data(runs);
+/*
+			  moveit_msgs::PlanningScene scene_msg;
+			  planning_scene_->getPlanningSceneMsg(scene_msg);
+			  ROS_WARN_STREAM("scene_msg: "<<scene_msg.robot_state);
+*/
 
 			planning_interface::PlanningContextPtr contex = planner_interfaces_[it->first]->getPlanningContext(planning_scene_, request);
 
@@ -186,8 +191,8 @@ void BenchmarkExecutor::executeBenchmark(moveit_msgs::MotionPlanRequest request,
 					solved = false;
 				}
 				double total_time = (ros::WallTime::now() - start).toSec();
-
-/*  				bool solved1 = contex->solve(res);
+/*
+  				bool solved1 = contex->solve(res);
 
 				moveit_msgs::DisplayTrajectory display_trajectory;
 
@@ -237,13 +242,15 @@ bool BenchmarkExecutor::runBenchmarks(const BenchmarkOptions& opts)
 		}
 
 		for (std::size_t i = 0; i < queries.size(); ++i)
-		{
+		{/*
 			// Clear all geometry from the scene
 			planning_scene_->getWorldNonConst()->clearObjects();
 			planning_scene_->getCurrentStateNonConst().clearAttachedBodies();
 			planning_scene_->getCurrentStateNonConst().setToDefaultValues();
 
-			planning_scene_->processPlanningSceneWorldMsg(scene_msg.world);
+			planning_scene_->processPlanningSceneWorldMsg(scene_msg.world);*/
+
+			planning_scene_->usePlanningSceneMsg(scene_msg);
 
 			ROS_INFO("Benchmarking query '%s' (%lu of %lu)", queries[i].name.c_str(), i + 1, queries.size());
 			ros::WallTime start_time = ros::WallTime::now();
@@ -340,16 +347,33 @@ bool BenchmarkExecutor::initializeBenchmarks(const BenchmarkOptions& opts, movei
 //	ROS_INFO_STREAM("queries: "<<queries[0].request.start_state.joint_state);
 //	ROS_WARN_STREAM("start_state: "<<start_states[0].state);
 
+	moveit_msgs::WorkspaceParameters workspace_parameters = opts.getWorkspaceParameters();
+
+
 	for (std::vector<BenchmarkRequest>::const_iterator it = queries.begin(); it!= queries.end(); ++it)
 	{
 		BenchmarkRequest brequest;
+
 		brequest.name = it->name;
 		brequest.request = it->request;
 		brequest.request.group_name = opts.getGroupName();
 		brequest.request.allowed_planning_time = opts.getTimeout();
 		brequest.request.num_planning_attempts = 1;
-		brequest.request.path_constraints = path_constraints[0].constraints[0];
+
+		robot_state::RobotState goal_state(psm_->getRobotModel());
+		const robot_model::JointModelGroup* jmg = psm_->getRobotModel()->getJointModelGroup(opts.getGroupName());
+		//goal_state.setJointGroupPositions(jmg, scene_msg.robot_state.joint_state);
+		moveit_msgs::Constraints joint_goal = kinematic_constraints::constructGoalConstraints(goal_state, jmg);
+
+		joint_goal.joint_constraints = path_constraints[0].constraints[0].joint_constraints;
+
+		//ROS_WARN_STREAM("const: "<< joint_goal.joint_constraints[0]);
+
+		brequest.request.goal_constraints[0] = joint_goal;
+		//brequest.request.goal_constraints[0].joint_constraints = path_constraints[0].constraints[0].joint_constraints;
+		//brequest.request.path_constraints = path_constraints[0].constraints[0];
 		brequest.request.start_state = start_states[0].state;
+		brequest.request.workspace_parameters = options_.getWorkspaceParameters();
 		requests.push_back(brequest);
 /*
 		std::vector<BenchmarkRequest> request_combs;

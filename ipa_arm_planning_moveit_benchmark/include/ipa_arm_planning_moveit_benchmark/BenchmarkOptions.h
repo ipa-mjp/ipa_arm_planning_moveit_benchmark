@@ -91,7 +91,7 @@ protected:
   void readGoalOffset(ros::NodeHandle& nh);
 
   bool readJointConstraints(ros::NodeHandle& nh);
-  void readOrientationConstraints(ros::NodeHandle& nh);
+  bool readOrientationConstraints(ros::NodeHandle& nh);
   /// warehouse parameters
   std::string hostname_;
   int port_;
