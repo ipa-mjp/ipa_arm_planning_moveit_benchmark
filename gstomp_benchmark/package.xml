@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<package>
+  <name>gstomp_benchmark</name>
+  <version>0.0.0</version>
+  <description>The gstomp_benchmark package</description>
+
+  <maintainer email="bfb-ws@todo.todo">bfb-ws</maintainer>
+
+  <license>TODO</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>moveit_core</build_depend>
+  <build_depend>moveit_ros_planning</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend version_gte="1.10.4">pluginlib</build_depend>  
+
+  <run_depend>moveit_core</run_depend>
+  <run_depend>moveit_ros_planning</run_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>rospy</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend version_gte="1.10.4">pluginlib</run_depend>
+
+</package>
