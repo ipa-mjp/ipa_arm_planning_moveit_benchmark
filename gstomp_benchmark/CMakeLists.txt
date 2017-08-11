@@ -6,6 +6,7 @@ add_compile_options(-std=c++11)
 find_package(catkin REQUIRED COMPONENTS
   moveit_core
   moveit_ros_planning
+  stomp_moveit
   roscpp
   rospy
   std_msgs
@@ -16,7 +17,7 @@ find_package(Boost REQUIRED COMPONENTS system)
 catkin_package(
 	INCLUDE_DIRS include
 #	LIBRARIES ${LIB_NAME}
-	CATKIN_DEPENDS moveit_core moveit_ros_planning roscpp rospy std_msgs
+	CATKIN_DEPENDS moveit_core moveit_ros_planning stomp_moveit roscpp rospy std_msgs
 	DEPENDS
 )
 
