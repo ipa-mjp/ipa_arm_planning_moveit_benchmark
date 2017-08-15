@@ -179,12 +179,12 @@ void BenchmarkExecutor::executeBenchmark(moveit_msgs::MotionPlanRequest request,
 //				planning_interface::MotionPlanResponse res;
 				ros::WallTime start = ros::WallTime::now();
 				bool solved = contex->solve(mp_res);
-
+/*
 				if (mp_res.error_code_.val != mp_res.error_code_.SUCCESS)
 				{
 					ROS_ERROR("executeBenchmark --> Could not compute plan successfully");
 					solved = false;
-				}
+				}*/
 				double total_time = (ros::WallTime::now() - start).toSec();
 
 /*  				bool solved1 = contex->solve(res);
