@@ -9,6 +9,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <unistd.h>
+#include <moveit/move_group_interface/move_group_interface.h>
 
 using namespace moveit_ros_benchmarks;
 
@@ -161,8 +162,80 @@ void BenchmarkExecutor::clear()
  */
 void BenchmarkExecutor::executeBenchmark(moveit_msgs::MotionPlanRequest request, const std::map<std::string, std::vector<std::string>>& planners, int runs)
 {
+	 benchmark_data_.clear();
+
+	  unsigned int num_planners = 0;
+	  for (std::map<std::string, std::vector<std::string>>::const_iterator it = planners.begin(); it != planners.end();
+	       ++it)
+	    num_planners += it->second.size();
+
+	  boost::progress_display progress(num_planners * runs, std::cout);
+
+	  // Iterate through all planner plugins
+	  for (std::map<std::string, std::vector<std::string>>::const_iterator it = planners.begin(); it != planners.end();
+	       ++it)
+	  {
+	    // Iterate through all planners associated with the plugin
+	    for (std::size_t i = 0; i < it->second.size(); ++i)
+	    {
+	      // This container stores all of the benchmark data for this planner
+	      PlannerBenchmarkData planner_data(runs);
+
+	      request.planner_id = it->second[i];
+
+	      // Planner start events
+	      //for (std::size_t j = 0; j < planner_start_fns_.size(); ++j)
+	      //  planner_start_fns_[j](request, planner_data);
+
+	      planning_interface::PlanningContextPtr context = planner_interfaces_[it->first]->getPlanningContext(planning_scene_, request);
+
+	      for (int j = 0; j < runs; ++j)
+	      {
+
+
+	        // Pre-run events
+	        //for (std::size_t k = 0; k < pre_event_fns_.size(); ++k)
+	        //  pre_event_fns_[k](request);
+
+	        // Solve problem
+	        planning_interface::MotionPlanDetailedResponse mp_res;
+	        ros::WallTime start = ros::WallTime::now();
+	        bool solved = context->solve(mp_res);
+	        double total_time = (ros::WallTime::now() - start).toSec();
+
+
+	        /*
+	        moveit_msgs::MotionPlanDetailedResponse response;
+	        mp_res.getMessage(response);
+	        moveit::planning_interface::MoveGroupInterface::Plan plan;
+	        plan.trajectory_ = response.trajectory.at(0);
+	        //plan.start_state_ = request.start_state;
+	        moveit::planning_interface::MoveGroupInterface::execute(plan);*/
+
+	        // Collect data
+	        start = ros::WallTime::now();
+
+	        // Post-run events
+	        //for (std::size_t k = 0; k < post_event_fns_.size(); ++k)
+	        //  post_event_fns_[k](request, mp_res, planner_data[j]);
+	        collectMetrics(planner_data[j], mp_res, solved, total_time);
+	        double metrics_time = (ros::WallTime::now() - start).toSec();
+	        ROS_DEBUG("Spent %lf seconds collecting metrics", metrics_time);
+
+	        ++progress;
+	      }
+
+	      // Planner completion events
+	    //  for (std::size_t j = 0; j < planner_completion_fns_.size(); ++j)
+	    //    planner_completion_fns_[j](request, planner_data);
+
+	      benchmark_data_.push_back(planner_data);
+	    }
+	  }
+}
+
 //TODO: ompl consider by default planner not load define planner checkit out and correct it
-	benchmark_data_.clear();
+/*	benchmark_data_.clear();
 
 	for (std::map<std::string, std::vector<std::string>>::const_iterator it = planners.begin(); it != planners.end(); ++it)
 	{
@@ -179,15 +252,15 @@ void BenchmarkExecutor::executeBenchmark(moveit_msgs::MotionPlanRequest request,
 //				planning_interface::MotionPlanResponse res;
 				ros::WallTime start = ros::WallTime::now();
 				bool solved = contex->solve(mp_res);
-/*
+////
 				if (mp_res.error_code_.val != mp_res.error_code_.SUCCESS)
 				{
 					ROS_ERROR("executeBenchmark --> Could not compute plan successfully");
 					solved = false;
-				}*/
+				}/////
 				double total_time = (ros::WallTime::now() - start).toSec();
 
-/*  				bool solved1 = contex->solve(res);
+////  				bool solved1 = contex->solve(res);
 
 				moveit_msgs::DisplayTrajectory display_trajectory;
 
@@ -199,7 +272,7 @@ void BenchmarkExecutor::executeBenchmark(moveit_msgs::MotionPlanRequest request,
 				display_trajectory.trajectory_start = response.trajectory_start;
 				display_trajectory.trajectory.push_back(response.trajectory);
 				options_.display_publisher_.publish(display_trajectory);
-*/
+/////
 				//collect data
 				start = ros::WallTime::now();
 
@@ -213,7 +286,7 @@ void BenchmarkExecutor::executeBenchmark(moveit_msgs::MotionPlanRequest request,
 		}
 	}
 }
-
+*/
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -238,12 +311,16 @@ bool BenchmarkExecutor::runBenchmarks(const BenchmarkOptions& opts)
 
 		for (std::size_t i = 0; i < queries.size(); ++i)
 		{
+			/*
 			// Clear all geometry from the scene
 			planning_scene_->getWorldNonConst()->clearObjects();
 			planning_scene_->getCurrentStateNonConst().clearAttachedBodies();
 			planning_scene_->getCurrentStateNonConst().setToDefaultValues();
 
-			planning_scene_->processPlanningSceneWorldMsg(scene_msg.world);
+			planning_scene_->processPlanningSceneWorldMsg(scene_msg.world);*/
+
+			 planning_scene_->usePlanningSceneMsg(scene_msg);
+
 
 			ROS_INFO("Benchmarking query '%s' (%lu of %lu)", queries[i].name.c_str(), i + 1, queries.size());
 			ros::WallTime start_time = ros::WallTime::now();
@@ -615,7 +692,8 @@ bool BenchmarkExecutor::plannerConfigurationsExist(const std::map<std::string, s
 	      bool planner_exists = false;
 	      for (planning_interface::PlannerConfigurationMap::const_iterator map_it = config_map.begin(); map_it != config_map.end() && !planner_exists; ++map_it)
 	      {
-	        planner_exists = (map_it->second.group == group_name);
+	    	  std::string planner_name = group_name + "[" + it->second[i] + "]";
+	    	  planner_exists = (map_it->second.group == group_name || map_it->second.name == planner_name);
 	        if (!planner_exists)
 	        {
 	        ROS_ERROR("plannerConfigurationsExist --> Planner '%s' does NOT exist for group '%s' in pipeline '%s'", it->second[i].c_str(), group_name.c_str(), it->first.c_str());
@@ -681,6 +759,10 @@ void BenchmarkExecutor::collectMetrics(PlannerRunData& metrics, const planning_i
     	    	  // the smoothness is actually the outside angle of the one we compute
     	    	  double angle = (boost::math::constants::pi<double>() - acos(acosValue));
 
+    	    	  //double angle = boost::math::constants::pi<double>() - acosValue;
+    	    	  ROS_WARN_STREAM("angle: "<< angle);
+
+    	    	  //smoothness += angle;
     	    	  // and we normalize by the length of the segments
     	    	  double u = 2.0 * angle;  /// (a + b);
     	    	  smoothness += u * u;
@@ -702,6 +784,96 @@ void BenchmarkExecutor::collectMetrics(PlannerRunData& metrics, const planning_i
 
   }
 }
+
+/*
+{
+  metrics["time REAL"] = boost::lexical_cast<std::string>(total_time);
+  metrics["solved BOOLEAN"] = boost::lexical_cast<std::string>(solved);
+
+  if (solved)
+  {
+    // Analyzing the trajectory(ies) geometrically
+    double L = 0.0;           // trajectory length
+    double clearance = 0.0;   // trajectory clearance (average)
+    double smoothness = 0.0;  // trajectory smoothness (average)
+    bool correct = true;      // entire trajectory collision free and in bounds
+
+    double process_time = total_time;
+    for (std::size_t j = 0; j < mp_res.trajectory_.size(); ++j)
+    {
+      correct = true;
+      L = 0.0;
+      clearance = 0.0;
+      smoothness = 0.0;
+      const robot_trajectory::RobotTrajectory& p = *mp_res.trajectory_[j];
+
+      // compute path length
+      for (std::size_t k = 1; k < p.getWayPointCount(); ++k)
+        L += p.getWayPoint(k - 1).distance(p.getWayPoint(k));
+
+      // compute correctness and clearance
+      collision_detection::CollisionRequest req;
+      for (std::size_t k = 0; k < p.getWayPointCount(); ++k)
+      {
+        collision_detection::CollisionResult res;
+        planning_scene_->checkCollisionUnpadded(req, res, p.getWayPoint(k));
+        if (res.collision)
+          correct = false;
+        if (!p.getWayPoint(k).satisfiesBounds())
+          correct = false;
+        double d = planning_scene_->distanceToCollisionUnpadded(p.getWayPoint(k));
+        if (d > 0.0)  // in case of collision, distance is negative
+          clearance += d;
+      }
+      clearance /= (double)p.getWayPointCount();
+
+      // compute smoothness
+      if (p.getWayPointCount() > 2)
+      {
+        double a = p.getWayPoint(0).distance(p.getWayPoint(1));
+        for (std::size_t k = 2; k < p.getWayPointCount(); ++k)
+        {
+          // view the path as a sequence of segments, and look at the triangles it forms:
+          //          s1
+          //          /\          s4
+          //      a  /  \ b       |
+          //        /    \        |
+          //       /......\_______|
+          //     s0    c   s2     s3
+          //
+
+          // use Pythagoras generalized theorem to find the cos of the angle between segments a and b
+          double b = p.getWayPoint(k - 1).distance(p.getWayPoint(k));
+          double cdist = p.getWayPoint(k - 2).distance(p.getWayPoint(k));
+          double acosValue = (a * a + b * b - cdist * cdist) / (2.0 * a * b);
+          if (acosValue > -1.0 && acosValue < 1.0)
+          {
+            // the smoothness is actually the outside angle of the one we compute
+            double angle = (boost::math::constants::pi<double>() - acos(acosValue));
+
+            // and we normalize by the length of the segments
+            double u = 2.0 * angle;  /// (a + b);
+            smoothness += u * u;
+          }
+          a = b;
+        }
+        smoothness /= (double)p.getWayPointCount();
+      }
+      ROS_WARN_STREAM("des: "<<mp_res.description_[j]);
+      metrics["path_" + mp_res.description_[j] + "_correct BOOLEAN"] = boost::lexical_cast<std::string>(correct);
+      metrics["path_" + mp_res.description_[j] + "_length REAL"] = boost::lexical_cast<std::string>(L);
+      metrics["path_" + mp_res.description_[j] + "_clearance REAL"] = boost::lexical_cast<std::string>(clearance);
+      metrics["path_" + mp_res.description_[j] + "_smoothness REAL"] = boost::lexical_cast<std::string>(smoothness);
+      metrics["path_" + mp_res.description_[j] + "_time REAL"] =
+          boost::lexical_cast<std::string>(mp_res.processing_time_[j]);
+      process_time -= mp_res.processing_time_[j];
+    }
+    if (process_time <= 0.0)
+      process_time = 0.0;
+    metrics["process_time REAL"] = boost::lexical_cast<std::string>(process_time);
+}
+}
+*/
 
 void BenchmarkExecutor::writeOutput(const BenchmarkRequest& brequest, const std::string& start_time, double benchmark_duration)
 {
