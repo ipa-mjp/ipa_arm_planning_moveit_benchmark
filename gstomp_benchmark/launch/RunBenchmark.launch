@@ -1,6 +1,6 @@
 <launch>
 	<arg name="robot" default="$(optenv ROBOT !!NO_ROBOT_SET!!)"/>
-	<arg name="pipeline" default="ompl" />
+	<arg name="pipeline" default="stomp" />
 	<arg name="load_robot_description" default="false"/>
 	<arg name="debug" default="false" />
 		

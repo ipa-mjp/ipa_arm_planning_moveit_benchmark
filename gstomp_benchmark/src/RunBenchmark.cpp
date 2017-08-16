@@ -33,7 +33,7 @@ void printValue(T value)
 
 void collectData(const planning_interface::MotionPlanDetailedResponse& res)
 {
-	double length_traj = 0.0, smoothness;
+	double length_traj = 0.0, smoothness = 0.0, smoothness1 = 0.0;
 
 	for (size_t i = 0; i < res.trajectory_.size(); ++i)
 	{
@@ -52,24 +52,36 @@ void collectData(const planning_interface::MotionPlanDetailedResponse& res)
 		    {
 		    	double b = p.getWayPoint(k-1).distance(p.getWayPoint(k));
 		    	double cdist = p.getWayPoint(k-2).distance(p.getWayPoint(k));
-		    	double acosValue = (a * a + b * b - cdist * cdist) / (2.0 * a * b);
+		    	double acosValue = (a * a + b * b - cdist * cdist) / (2.0 * a * b);	//Law of cosines
 		    	if (acosValue > -1.0 && acosValue < 1.0)
 		    	{
 		    	 // the smoothness is actually the outside angle of the one we compute
-		    	 double angle = (3.1415 - acos(acosValue));
+		    	 double angle1 = (3.1415 - acos(acosValue));
+
+		    		//double angle = 3.1415 - acosValue;
+
+		    		smoothness += angle1;
+
 
 		    	 // and we normalize by the length of the segments
-		    	  double u = 2.0 * angle;  /// (a + b);
-		    	  smoothness += u * u;
+		    	  double u = 2.0 * angle1;  /// (a + b);
+		    	  smoothness1 += u * u;
+
+		    	  ROS_WARN_STREAM("angle: "<< angle1);
+    	    	  ROS_WARN_STREAM("smoothness: "<< smoothness);
+    	    	  ROS_WARN_STREAM("angle1: "<< angle1);
+    	    		ROS_WARN_STREAM("smoothness1: "<< smoothness1);
+
+
 		    	 }
 		    	a = b;
 		      }
 		   smoothness /= double(p.getWayPointCount());
 		  }
 
-		ROS_WARN_STREAM("lenght_traj: " <<length_traj);
-		ROS_WARN_STREAM("smoothness: " <<smoothness);
-		ROS_WARN_STREAM("time: " <<res.processing_time_[i]);
+		ROS_WARN_STREAM("final_lenght_traj: " <<length_traj);
+		ROS_WARN_STREAM("final_smoothness: " <<smoothness);
+		ROS_WARN_STREAM("final_time: " <<res.processing_time_[i]);
 	}
 }
 
@@ -157,7 +169,7 @@ int main (int argc, char *argv[])
 
 	  ROS_WARN("Hello");
 
-	  int test_runs = 10;
+	  int test_runs = 2;
 
 	  for (int i = 0; i < test_runs; i++)
 	    {
@@ -181,7 +193,7 @@ int main (int argc, char *argv[])
 	  t2 = ros::Time::now();
 	  ROS_ERROR("Average time spent calculating trajectory: %4.10f seconds", (t2-t1).toSec()/test_runs);
 	ROS_WARN("done...");
-	ros::spin();
+	//ros::spin();
 
 return 0;
 }
